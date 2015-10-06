@@ -1,8 +1,24 @@
 use angular;
 use console;
 
-angular.module('kao.auth', ['kao.utils', 'kao.nav'])
-    .service('UserService', fn($http, $window, $rootScope, NavService, KaoDefer) {
+angular.module('kao.auth', ['kao.utils'])
+    .provider('AuthConfig', fn() {
+        this.configure = fn(config) {
+            for key, value of config {
+                this[key] = value;
+            }
+        };
+        
+        this.$get = fn() {
+            return this;
+        };
+    })
+    .factory('login', fn($location, AuthConfig) {
+        return fn() {
+            return $location.path(AuthConfig.loginRoute);
+        };
+    })
+    .service('UserService', fn($http, $window, $rootScope, AuthConfig, KaoDefer, login) {
         var user = undefined;
         var responseHandler = fn(promise) {
             var deferred = KaoDefer();
@@ -20,19 +36,19 @@ angular.module('kao.auth', ['kao.utils', 'kao.nav'])
             return deferred.promise;
         };
         this.login = fn (loginInfo) {
-            return responseHandler($http.post('/api/login', loginInfo));
+            return responseHandler($http.post(AuthConfig.loginApi, loginInfo));
         };
         this.register = fn (user) {
-            return responseHandler($http.post('/api/users', user));
+            return responseHandler($http.post(AuthConfig.usersApi, user));
         };
         this.update = fn (user) {
-            return responseHandler($http.put('/api/users/current', user));
+            return responseHandler($http.put(AuthConfig.currentUserApi, user));
         };
         this.logout = fn () {
             delete $window.localStorage.token;
             user = undefined;
             $rootScope.$broadcast('user-logout');
-            NavService.login.goTo();
+            login();
         };
         this.isLoggedIn = fn () {
             return $window.localStorage.token?;
@@ -52,11 +68,11 @@ angular.module('kao.auth', ['kao.utils', 'kao.nav'])
             return deferred.promise;
         };
     })
-    .service('AuthRejected', fn ($location, NavService) {
+    .service('AuthRejected', fn ($location, login) {
         return {
             toLogin: fn () {
                 var returnToPath = $location.path();
-                NavService.login.goTo().search('returnTo', returnToPath);
+                login().search('returnTo', returnToPath);
             }
         };
     })

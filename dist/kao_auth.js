@@ -1,6 +1,24 @@
 $traceurRuntime.ModuleStore.getAnonymousModule(function() {
   "use strict";
-  angular.module("kao.auth", ["kao.utils", "kao.nav"]).service("UserService", function($http, $window, $rootScope, NavService, KaoDefer) {
+  angular.module("kao.auth", ["kao.utils"]).provider("AuthConfig", function() {
+    this.configure = function(config) {
+      for (var $__0 = Object.keys(config)[$traceurRuntime.toProperty(Symbol.iterator)](),
+          $__1; !($__1 = $__0.next()).done; ) {
+        var key = $__1.value;
+        {
+          var value = config[key];
+          this[key] = value;
+        }
+      }
+    };
+    this.$get = function() {
+      return this;
+    };
+  }).factory("login", function($location, AuthConfig) {
+    return function() {
+      return $location.path(AuthConfig.loginRoute);
+    };
+  }).service("UserService", function($http, $window, $rootScope, AuthConfig, KaoDefer, login) {
     var user = void 0;
     var responseHandler = function(promise) {
       var deferred = KaoDefer();
@@ -18,19 +36,19 @@ $traceurRuntime.ModuleStore.getAnonymousModule(function() {
       return deferred.promise;
     };
     this.login = function(loginInfo) {
-      return responseHandler($http.post("/api/login", loginInfo));
+      return responseHandler($http.post(AuthConfig.loginApi, loginInfo));
     };
     this.register = function(user) {
-      return responseHandler($http.post("/api/users", user));
+      return responseHandler($http.post(AuthConfig.usersApi, user));
     };
     this.update = function(user) {
-      return responseHandler($http.put("/api/users/current", user));
+      return responseHandler($http.put(AuthConfig.currentUserApi, user));
     };
     this.logout = function() {
       delete $window.localStorage.token;
       user = void 0;
       $rootScope.$broadcast("user-logout");
-      NavService.login.goTo();
+      login();
     };
     this.isLoggedIn = function() {
       return typeof $window.localStorage.token !== "undefined" && $window.localStorage.token !== null;
@@ -49,10 +67,10 @@ $traceurRuntime.ModuleStore.getAnonymousModule(function() {
       }
       return deferred.promise;
     };
-  }).service("AuthRejected", function($location, NavService) {
+  }).service("AuthRejected", function($location, login) {
     return {toLogin: function() {
         var returnToPath = $location.path();
-        NavService.login.goTo().search("returnTo", returnToPath);
+        login().search("returnTo", returnToPath);
       }};
   }).factory("authInterceptor", function($rootScope, $q, $window, AuthRejected) {
     return {
