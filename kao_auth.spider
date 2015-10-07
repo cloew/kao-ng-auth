@@ -2,6 +2,9 @@ use angular;
 use console;
 
 angular.module('kao.auth', ['kao.utils'])
+    .value('userEvents', {login: 'user-login',
+                          update: 'user-update',
+                          logout: 'user-logout'})
     .provider('AuthConfig', fn() {
         this.configure = fn(config) {
             for key, value of config {
@@ -18,9 +21,9 @@ angular.module('kao.auth', ['kao.utils'])
             return $location.path(AuthConfig.loginRoute);
         };
     })
-    .service('UserService', fn($http, $window, $rootScope, AuthConfig, KaoDefer, login) {
+    .service('UserService', fn($http, $window, $rootScope, AuthConfig, KaoDefer, login, userEvents) {
         var user = undefined;
-        var responseHandler = fn(promise) {
+        var responseHandler = fn(promise, event) {
             var deferred = KaoDefer();
             promise.success(fn(data) {
                 if (data.error) {
@@ -28,6 +31,7 @@ angular.module('kao.auth', ['kao.utils'])
                 } else {
                     user = data.user;
                     $window.localStorage.token = data.token;
+                    $rootScope.$broadcast(event, user);
                     deferred.resolve(user);
                 }
             }).error(fn(error) {
@@ -36,18 +40,18 @@ angular.module('kao.auth', ['kao.utils'])
             return deferred.promise;
         };
         this.login = fn (loginInfo) {
-            return responseHandler($http.post(AuthConfig.loginApi, loginInfo));
+            return responseHandler($http.post(AuthConfig.loginApi, loginInfo), userEvents.login);
         };
         this.register = fn (user) {
-            return responseHandler($http.post(AuthConfig.usersApi, user));
+            return responseHandler($http.post(AuthConfig.usersApi, user), userEvents.login);
         };
         this.update = fn (user) {
-            return responseHandler($http.put(AuthConfig.currentUserApi, user));
+            return responseHandler($http.put(AuthConfig.currentUserApi, user), userEvents.update);
         };
         this.logout = fn () {
             delete $window.localStorage.token;
             user = undefined;
-            $rootScope.$broadcast('user-logout');
+            $rootScope.$broadcast(userEvents.logout);
             login();
         };
         this.isLoggedIn = fn () {
@@ -56,7 +60,7 @@ angular.module('kao.auth', ['kao.utils'])
         this.withUser = fn () {
             var deferred = KaoDefer();
             if this.isLoggedIn() && !user? {
-                $http.get('/api/users/current').success(fn(data) {
+                $http.get(AuthConfig.currentUserApi).success(fn(data) {
                     user = data.user;
                     deferred.resolve(user);
                 }).error(fn(error) {

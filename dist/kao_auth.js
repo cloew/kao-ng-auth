@@ -1,6 +1,10 @@
 $traceurRuntime.ModuleStore.getAnonymousModule(function() {
   "use strict";
-  angular.module("kao.auth", ["kao.utils"]).provider("AuthConfig", function() {
+  angular.module("kao.auth", ["kao.utils"]).value("userEvents", {
+    login: "user-login",
+    update: "user-update",
+    logout: "user-logout"
+  }).provider("AuthConfig", function() {
     this.configure = function(config) {
       for (var $__0 = Object.keys(config)[$traceurRuntime.toProperty(Symbol.iterator)](),
           $__1; !($__1 = $__0.next()).done; ) {
@@ -18,9 +22,9 @@ $traceurRuntime.ModuleStore.getAnonymousModule(function() {
     return function() {
       return $location.path(AuthConfig.loginRoute);
     };
-  }).service("UserService", function($http, $window, $rootScope, AuthConfig, KaoDefer, login) {
+  }).service("UserService", function($http, $window, $rootScope, AuthConfig, KaoDefer, login, userEvents) {
     var user = void 0;
-    var responseHandler = function(promise) {
+    var responseHandler = function(promise, event) {
       var deferred = KaoDefer();
       promise.success(function(data) {
         if (data.error) {
@@ -28,6 +32,7 @@ $traceurRuntime.ModuleStore.getAnonymousModule(function() {
         } else {
           user = data.user;
           $window.localStorage.token = data.token;
+          $rootScope.$broadcast(event, user);
           deferred.resolve(user);
         }
       }).error(function(error) {
@@ -36,18 +41,18 @@ $traceurRuntime.ModuleStore.getAnonymousModule(function() {
       return deferred.promise;
     };
     this.login = function(loginInfo) {
-      return responseHandler($http.post(AuthConfig.loginApi, loginInfo));
+      return responseHandler($http.post(AuthConfig.loginApi, loginInfo), userEvents.login);
     };
     this.register = function(user) {
-      return responseHandler($http.post(AuthConfig.usersApi, user));
+      return responseHandler($http.post(AuthConfig.usersApi, user), userEvents.login);
     };
     this.update = function(user) {
-      return responseHandler($http.put(AuthConfig.currentUserApi, user));
+      return responseHandler($http.put(AuthConfig.currentUserApi, user), userEvents.update);
     };
     this.logout = function() {
       delete $window.localStorage.token;
       user = void 0;
-      $rootScope.$broadcast("user-logout");
+      $rootScope.$broadcast(userEvents.logout);
       login();
     };
     this.isLoggedIn = function() {
@@ -56,7 +61,7 @@ $traceurRuntime.ModuleStore.getAnonymousModule(function() {
     this.withUser = function() {
       var deferred = KaoDefer();
       if (!!this.isLoggedIn() && !(typeof user !== "undefined" && user !== null)) {
-        $http.get("/api/users/current").success(function(data) {
+        $http.get(AuthConfig.currentUserApi).success(function(data) {
           user = data.user;
           deferred.resolve(user);
         }).error(function(error) {
