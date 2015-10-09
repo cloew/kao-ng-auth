@@ -1,0 +1,23 @@
+{
+  "name": "kao-ng-auth",
+  "version": "0.2.0",
+  "description": "Angular module for dealing with logging a user in",
+  "main": "Gruntfile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cloew/kao-ng-auth.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cloew/kao-ng-auth/issues"
+  },
+  "homepage": "https://github.com/cloew/kao-ng-auth#readme",
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-spider-script": "0.0.9"
+  }
+}
